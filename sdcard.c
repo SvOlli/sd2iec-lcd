@@ -110,10 +110,9 @@ static uint8_t isSDHC;
 #define isSDHC 0
 #endif
 
-
 static char sdResponse(uint8_t expected)
 {
-  unsigned short count = 0x0FFF;
+  unsigned short count = 0xFFFF;
   
   while ((spiTransferByte(0xFF) != expected) && count )
     count--;
@@ -210,9 +209,9 @@ static char extendedInit(void) {
 // SD common initialisation
 static uint8_t sdInit(void) {
   uint8_t i;
-  uint8_t counter;
+  uint16_t counter;
 
-  counter = 0xff;
+  counter = 0xffff;
   do {
     // Prepare for ACMD, send CMD55: APP_CMD
     i = sendCommand(APP_CMD, 0, 0xff, 1);
@@ -221,6 +220,9 @@ static uint8_t sdInit(void) {
       printf_P(PSTR("EXT:41 E%02X\n"),i);
       return TRUE;
     }
+
+    if (counter == 0xffff)
+      printf_P(PSTR("EXT:41 I=%02x\n"),i);
 
     // Send ACMD41: SD_SEND_OP_COND
     //   1L<<30 == Host has High Capacity Support
@@ -233,7 +235,7 @@ static uint8_t sdInit(void) {
     printf_P(PSTR("EXT:41 TMO I:%02X\n"),i);
     return FALSE;
   } else {
-    printf_P(PSTR("EXT:OK\n"));
+    printf_P(PSTR("EXT:OK %02X\n"),counter);
     return TRUE;
   }
 }
