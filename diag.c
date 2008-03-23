@@ -73,6 +73,7 @@ void sdcard_diags(uint8_t secondary) {
   stdout = &mystdout;
 
   buf = alloc_buffer();
+  memset(buf->data,0,1024);
   buf->secondary = secondary;
   buf->read      = 1;
   buf->position  = 0;
@@ -87,6 +88,8 @@ void sdcard_diags(uint8_t secondary) {
   bufferdata[4] = 0;
   bufferdata[5] = 0;
   bufferdata[6] = '"';
+
+  diagflag = command_buffer[0];
 
   f_mount(0, &fatfs);
 

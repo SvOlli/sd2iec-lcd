@@ -102,6 +102,7 @@
 #define SD_SET_CLR_CARD_DETECT    42
 #define SD_SEND_SCR               51
 
+uint8_t diagflag;
 
 uint8_t sdCardOK = FALSE;
 #ifdef SDHC_SUPPORT
@@ -134,6 +135,8 @@ static char sdWaitWriteFinish(void)
 
 static void deselectCard(void) {
   // Send 8 clock cycles
+  if (diagflag & 1)
+    spiTransferByte(0xff);
   SPI_SS_HIGH();
   spiTransferByte(0xff);
 }
@@ -233,7 +236,7 @@ static uint8_t sdInit(void) {
   // If ACMD41 fails something strange happened...
   if (i != 0) {
     printf_P(PSTR("EXT:41 TMO I:%02X\n"),i);
-    return FALSE;
+    return TRUE; //FALSE;
   } else {
     printf_P(PSTR("EXT:OK %02X\n"),counter);
     return TRUE;
@@ -257,8 +260,6 @@ DSTATUS disk_initialize(BYTE drv) {
   uint8_t  i;
   uint16_t counter;
   uint32_t answer;
-
-  static uint32_t marker = 0;
 
 #ifdef SDCARD_WP_SETUP
   SDCARD_WP_SETUP();
@@ -299,7 +300,7 @@ DSTATUS disk_initialize(BYTE drv) {
     i = sendCommand(READ_OCR, 0, 0xff, 0);
     if (i > 1) {
       // kills my Sandisk 1G which requires the retries in the first place
-      // deselectCard();
+      deselectCard();
     }
   } while (i > 1 && counter-- > 0);
   
@@ -329,12 +330,11 @@ DSTATUS disk_initialize(BYTE drv) {
   // Keep sending CMD1 (SEND_OP_COND) command until zero response
   counter = 0xffff;
   do {
-    i = sendCommand(SEND_OP_COND, marker, 0xff, 1);
+    i = sendCommand(SEND_OP_COND, 1L<<30, 0xff, 1);
     counter--;
   } while (i != 0 && counter > 0);
 
-  printf_P(PSTR("OPCND: C:%04X I:%02X M:%02X\n"),counter,i,!!marker);
-  marker ^= 1L<<30;
+  printf_P(PSTR("OPCND: C:%04X I:%02X\n"),counter,i);
   if (counter==0) {
     return STA_NOINIT | STA_NODISK;
   }

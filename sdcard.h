@@ -62,4 +62,6 @@ DRESULT disk_write (BYTE, const BYTE*, DWORD, BYTE);
 /* Will be set to FALSE if any access on the card fails */
 extern uint8_t sdCardOK;
 
+extern uint8_t diagflag;
+
 #endif
