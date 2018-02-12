@@ -39,7 +39,7 @@ actual command code, C. The 10 possible values for C are:
 Some commands require a response back from the 1541 (ie. commands $00, $0e,
 $10). Other commands such as reading or writing sectors don't send any
 response back to the C64. Thus, in order to read a sector, the game first
-issues command $02 to get a sector from the phyisical media, then command $0e
+issues command $02 to get a sector from the physical media, then command $0e
 to download it over the IEC bus.
 
 All operations are low (ie. track/sector) level. There is no support for
@@ -49,7 +49,7 @@ The higher level command $00 reads an entire file given its first
 track/sector. The format of a file is the same as in a regular DOS file where
 every sector has a 254 byte payload (a "block") and the first two bytes at the
 beginning of the sector (offsets $00 and $01) are the track and sector of the
-next block respectively. The last sector has track number 0 and is transfered
+next block respectively. The last sector has track number 0 and is transferred
 completely regardless of the actual payload size.
 
 Protocol
@@ -98,11 +98,11 @@ Appendix - IEC bus / SD2IEC cheat sheet
 =======================================
 
 Tracking down IEC bus data can be painful due to the many logic level
-inversions here and there. This cheatsheet was helpful:
+inversions here and there. This cheat sheet was helpful:
 
  * C64 -> 1541/SD2IEC:
 
-        $DD00     | line   | v  |     $1800     |
+        $DD00     |        |    |     $1800     |
    CLOCK/DATA OUT | line   | v  | CLOCK/DATA IN | iec_read_bus()
    ---------------+--------+----+---------------+---------------
          0        | ACTIVE | 0v |       1       |       0
@@ -110,7 +110,7 @@ inversions here and there. This cheatsheet was helpful:
 
  * 1541/SD2IEC -> C64:
 
-        $1800     | line   | v  |     $DD00  IN | set_data() /
+        $1800     |        |    |     $DD00     | set_data() /
    CLOCK/DATA OUT | line   | v  | CLOCK/DATA IN | set_clock()
    ---------------+--------+----+---------------+---------------
           0       | INACTV | 5v |       1       |       1
