@@ -226,83 +226,85 @@ void load_anotherworld(UNUSED_PARAMETER) {
   }
 
   /* Main loop ($300) */
-  for (;;) {
+  ATOMIC_BLOCK(ATOMIC_FORCEON) {
+    for (;;) {
 
-    set_busy_led(0);
+      set_busy_led(0);
 
-    /* $309 .. $313: Wiggle DATA, this tells the C64 we're ready.
-     * Stop when CLOCK becomes active. This tells us the C64 is ready */
-    do {
-      delay_us(10); // guess for 14 cycles
-      set_data(! (iec_bus_read() & IEC_BIT_DATA));
-    } while ((iec_bus_read() & IEC_BIT_CLOCK));
+      /* $309 .. $313: Wiggle DATA, this tells the C64 we're ready.
+       * Stop when CLOCK becomes active. This tells us the C64 is ready */
+      do {
+        delay_us(10); // guess for 14 cycles
+        set_data(! (iec_bus_read() & IEC_BIT_DATA));
+      } while ((iec_bus_read() & IEC_BIT_CLOCK));
 
-    set_data(1);
+      set_data(1);
 
-    /* Wait for incoming command, ie. CLOCK goes inactive ($31d .. $322) */
-    while (!(iec_bus_read() & IEC_BIT_CLOCK)) ;
+      /* Wait for incoming command, ie. CLOCK goes inactive ($31d .. $322) */
+      while (!(iec_bus_read() & IEC_BIT_CLOCK)) ;
 
-    /* Read incoming command */
-    set_busy_led(1);
+      /* Read incoming command */
+      set_busy_led(1);
 
-    a = aw_get_byte();
-    b = aw_get_byte();
-    c = aw_get_byte();
+      a = aw_get_byte();
+      b = aw_get_byte();
+      c = aw_get_byte();
 
-#if 0 // Don't mess with timing for now, and I can't access the uart anyway
-    /* Output command for debugging purposes */
-    uart_puthex(a);
-    uart_putc(' ');
-    uart_puthex(b);
-    uart_putc(' ');
-    uart_puthex(c);
-    uart_putcrlf();
-#endif
+  #if 0 // Don't mess with timing for now, and I can't access the uart anyway
+      /* Output command for debugging purposes */
+      uart_puthex(a);
+      uart_putc(' ');
+      uart_puthex(b);
+      uart_putc(' ');
+      uart_puthex(c);
+      uart_putcrlf();
+  #endif
 
-    switch(c / 2) {
-      case 0: // $366 read sector chain (~ file) starting at track/sector A/B
-        aw_read_sector_chain(buf, a, b);
-        break;
+      switch(c / 2) {
+        case 0: // $366 read sector chain (~ file) starting at track/sector A/B
+          aw_read_sector_chain(buf, a, b);
+          break;
 
-      case 1: // $38f read track/sector A/B into $700
-        aw_read_sector(buf, a, b);
-        break;
+        case 1: // $38f read track/sector A/B into $700
+          aw_read_sector(buf, a, b);
+          break;
 
-      case 2: // $3a6 copy $700 page to $BBAA
-        aw_copy_page(buf, a, b);
-        break;
+        case 2: // $3a6 copy $700 page to $BBAA
+          aw_copy_page(buf, a, b);
+          break;
 
-      case 3: // $3bb write track/sector A/B from $700
-        set_dirty_led(1);
-        aw_write_sector(buf, a, b);
-        set_dirty_led(0);
-        break;
+        case 3: // $3bb write track/sector A/B from $700
+          set_dirty_led(1);
+          aw_write_sector(buf, a, b);
+          set_dirty_led(0);
+          break;
 
-      case 4: // $3b1 bump head
-        // yeah ok done
-        break;
+        case 4: // $3b1 bump head
+          // yeah ok done
+          break;
 
-      case 5: // $38b read BAM
-        aw_read_bam();
-        break;
+        case 5: // $38b read BAM
+          aw_read_bam();
+          break;
 
-      case 6: // $3d2 download page from host into $700
-        aw_download_page(buf, a, b);
-        break;
+        case 6: // $3d2 download page from host into $700
+          aw_download_page(buf, a, b);
+          break;
 
-      case 7: // $11c upload page at $BBAA to host
-        aw_upload_page(buf, a, b);
-        break;
+        case 7: // $11c upload page at $BBAA to host
+          aw_upload_page(buf, a, b);
+          break;
 
-      case 8: // $128 read $1c00 (VIA 2 drive control) and send to host
-        aw_send_drive_control_reg();
-        break;
+        case 8: // $128 read $1c00 (VIA 2 drive control) and send to host
+          aw_send_drive_control_reg();
+          break;
 
-      case 9: // $119 reset 1541, unload code
-        goto done;
+        case 9: // $119 reset 1541, unload code
+          goto done;
 
-      default:
-        goto error;
+        default:
+          goto error;
+      }
     }
   }
 
