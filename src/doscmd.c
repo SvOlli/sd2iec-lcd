@@ -188,7 +188,9 @@ static const PROGMEM struct fastloader_crc_s fl_crc_table[] = {
 #ifdef CONFIG_LOADER_SAMSJOURNEY
   { 0x6af4, FL_SAMSJOURNEY,      RXTX_NONE          }, // CRC of penultimate M-W
 #endif
-
+#ifdef CONFIG_LOADER_ANOTHERWORLD
+  { 0xa018, FL_ANOTHERWORLD,     RXTX_NONE          }, // CRC of Another World M-W ($0500..$053f)
+#endif
   { 0, FL_NONE, 0 }, // end marker
 };
 
@@ -258,6 +260,9 @@ static const PROGMEM struct fastloader_handler_s fl_handler_table[] = {
 #endif
 #ifdef CONFIG_LOADER_SAMSJOURNEY
   { 0x0400, FL_SAMSJOURNEY,      load_samsjourney, 0 },
+#endif
+#ifdef CONFIG_LOADER_ANOTHERWORLD
+  { 0x0500, FL_ANOTHERWORLD,     load_anotherworld, 0 },
 #endif
 
   { 0, FL_NONE, NULL, 0 }, // end marker

@@ -691,6 +691,12 @@ Note: Using sd2iec without an external crystal or similiar precise
   LED lit, e.g. during the intro), sd2iec will hang and requires a
   reset or powercycle to recover.
 
+  Another World
+  -------------
+  The loader in Another World is captive and requires a reset to exit.
+  See docs/anotherworld.txt for deailed information about this loader
+  and its protocol.
+
 JiffyDOS:
 =========
 The JiffyDOS protocol has very relaxed timing constraints compared to
