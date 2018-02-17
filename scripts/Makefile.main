@@ -7,7 +7,7 @@ PATCHLEVEL = 0
 FIX =
 
 # Forces bootloader version to 0, comment out or leave empty for release
-PRERELEASE = AW
+PRERELEASE = AW+WOF
 
 #----------------------------------------------------------------------------
 # WinAVR Makefile Template written by Eric B. Weddington, Joerg Wunsch, et al.
@@ -59,6 +59,7 @@ ifeq ($(CONFIG_HAVE_IEC),y)
   SRC += fl-epyxcart.c fl-fc3exos.c fl-geos.c fl-gijoe.c
   SRC += fl-mmzak.c fl-nippon.c fl-turbodisk.c fl-ulm3.c
   SRC += fl-n0sdos.c fl-samsjourney.c fl-anotherworld.c
+  SRC += fl-wingsoffury.c
 endif
 
 ifneq ($(CONFIG_NO_SD),y)
@@ -315,6 +316,8 @@ $(OBJDIR)/%.bin: $(OBJDIR)/%.elf
 	$(Q)$(OBJCOPY) -O binary -R .eeprom $< $@
 	$(E) "  CRCGEN $@"
 	$(Q)$(CRCGEN) $@ $(BINARY_LENGTH) $(CONFIG_BOOT_DEVID) $(BOOT_VERSION)
+	$(E) "  COPY   sd2iec-$(CONFIGSUFFIX)-$(PROGRAMVERSION).bin"
+	$(Q)$(COPY) $@ $(OBJDIR)/sd2iec-$(CONFIGSUFFIX)-$(PROGRAMVERSION).bin
 else
 $(OBJDIR)/%.bin: $(OBJDIR)/%.elf
 	$(E) "  BIN    $@"
