@@ -48,7 +48,7 @@
   * Bytes are received over DATA one bit at a time on every CLK edge, MSb first.
   * @return the byte
   */
-static uint8_t aw_get_byte(void) { // $3de
+static uint8_t get_byte(void) { // $3de
   uint8_t b = 0, i;
   for (i = 0; i < 4; i++) {
     while ((iec_bus_read() & IEC_BIT_CLOCK)) ;
@@ -63,7 +63,7 @@ static uint8_t aw_get_byte(void) { // $3de
 /** Send byte to host.
   * Bytes are sent over DATA one bit at a time on every CLK edge MSb first.
   */
-static void aw_put_byte(uint8_t b) { // $12e
+static void put_byte(uint8_t b) { // $12e
   uint8_t i;
   for (i = 0; i < 4; i++) {
     set_data(!(b & 0x80));
@@ -82,7 +82,7 @@ static void aw_put_byte(uint8_t b) { // $12e
   * (sector chain read) routine after all sectors are read and uploaded
   * to the C64.
   */
-static void aw_read_bam(void) {
+static void read_bam(void) {
   // nop
 }
 
@@ -92,22 +92,13 @@ static void aw_read_bam(void) {
   * @a  : lo byte of destination address
   * @b  : hi byte of destination address
   */
-static void aw_copy_page(buffer_t *buf[], uint8_t a, uint8_t b) {
-  // We should only expect b between 4 and 7, bail out otherwise
-  if (b < 4 || b > 7) {
+static void copy_page(buffer_t *buf[], uint8_t a, uint8_t b) {
+  // We should only expect b between 4 and 7, bail out otherwise.
+  // Also, 7 is pointless (copy to itself)
+  if (b < 4 || b > 6) {
     return;
   }
   memcpy(buf[b-4]->data, buf[3]->data, 256);
-}
-
-
-/** Read sector into $700
-  * @buf: array of page buffers (mapping $0400.. $07ff)
-  * @a  : track
-  * @b  : sector
-  */
-static void aw_read_sector(buffer_t *buf[], uint8_t a, uint8_t b) {
-  read_sector(buf[3], current_part, a, b);
 }
 
 
@@ -116,7 +107,7 @@ static void aw_read_sector(buffer_t *buf[], uint8_t a, uint8_t b) {
   * @a  : track
   * @b  : sector
   */
-static void aw_read_sector_chain(buffer_t *buf[], uint8_t a, uint8_t b) {
+static void read_sector_chain(buffer_t *buf[], uint8_t a, uint8_t b) {
   uint8_t i;
   while (a) {
     set_clock(0); // signal busy reading sector
@@ -124,24 +115,14 @@ static void aw_read_sector_chain(buffer_t *buf[], uint8_t a, uint8_t b) {
     set_clock(1); // release CLK
     i = 2;
     do {
-      aw_put_byte(buf[3]->data[i]);
+      put_byte(buf[3]->data[i]);
       i++;
     } while (i);
     a = buf[3]->data[0];
     b = buf[3]->data[1];
-    aw_put_byte(a);
+    put_byte(a);
   } 
-  aw_read_bam();
-}
-
-
-/** Write sector at $700
-  * @buf: array of page buffers (mapping $0400.. $07ff)
-  * @a  : track
-  * @b  : sector
-  */
-static void aw_write_sector(buffer_t *buf[], uint8_t a, uint8_t b) {
-  write_sector(buf[3], current_part, a, b);
+  read_bam();
 }
 
 
@@ -150,7 +131,7 @@ static void aw_write_sector(buffer_t *buf[], uint8_t a, uint8_t b) {
   * @a  : lo byte of page addr
   * @b  : hi byte of page addr
   */
-static void aw_upload_page(buffer_t *buf[], uint8_t a, uint8_t b) {
+static void upload_page(buffer_t *buf[], uint8_t a, uint8_t b) {
   uint8_t i = 0;
   // We should only expect b between 4 and 7, bail out otherwise
   if (b < 4 || b > 7) {
@@ -158,7 +139,7 @@ static void aw_upload_page(buffer_t *buf[], uint8_t a, uint8_t b) {
   }
 
   do {
-    aw_put_byte(buf[b-4]->data[i]);
+    put_byte(buf[b-4]->data[i]);
     i++;
   } while (i);
 }
@@ -169,10 +150,10 @@ static void aw_upload_page(buffer_t *buf[], uint8_t a, uint8_t b) {
   * @a  : lo byte of page addr
   * @b  : hi byte of page addr
   */
-static void aw_download_page(buffer_t *buf[], uint8_t a, uint8_t b) {
+static void download_page(buffer_t *buf[], uint8_t a, uint8_t b) {
   uint8_t i = 0;
   do {
-    buf[3]->data[i] = aw_get_byte();
+    buf[3]->data[i] = get_byte();
     i++;
   } while (i);
 }
@@ -182,22 +163,24 @@ static void aw_download_page(buffer_t *buf[], uint8_t a, uint8_t b) {
   * Used by Another World to check for disk write protection.
   * Currently hardcoded to $10 = disk is write unprotected.
   */
-static void aw_send_drive_control_reg(void) {
-  aw_put_byte(0x10);
+static void send_drive_control_reg(void) {
+  put_byte(0x10);
 }
 
 
-/** Display error using the busy/dirty leds.
-  * 8 blinks = 8 bits MSb first, green = 1, red = 0.
-  * Really crappy debugging aid for sd2iecs that don't have their
-  * UART pins accessible because they are glued shut like mine.
-  *
-  * @buf: array of page buffers (mapping $0400.. $07ff)
-  * @a  : lo byte of page addr
-  * @b  : hi byte of page addr
-  */
 #if 0
-static void aw_debug(uint8_t c) {
+/** Display error by blinking the busy/dirty leds 8 times
+  * (green = 1, red = 0), MSb first.
+  *
+  * Really crappy debugging aid for sd2iecs that don't have their
+  * UART pins accessible because they are glued shut.
+  *
+  * @c: whatever value you want to display
+  */
+static void debug_blink(uint8_t c) {
+  set_busy_led(1);
+  set_dirty_led(1);
+  delay_ms(500);
   for (uint8_t m = 0x80; m; m >>= 1) {
     if (c & m) {
       set_busy_led(1); set_dirty_led(0);
@@ -211,6 +194,7 @@ static void aw_debug(uint8_t c) {
   }
 }
 #endif
+
 
 void load_anotherworld(UNUSED_PARAMETER) {
   buffer_t *buf[4];
@@ -234,23 +218,28 @@ void load_anotherworld(UNUSED_PARAMETER) {
       /* $309 .. $313: Wiggle DATA, this tells the C64 we're ready.
        * Stop when CLOCK becomes active. This tells us the C64 is ready */
       do {
-        delay_us(10); // guess for 14 cycles
+        delay_us(10); // 14 cycles, but shorter (10 + loop overhead) is okay
         set_data(! (iec_bus_read() & IEC_BIT_DATA));
       } while ((iec_bus_read() & IEC_BIT_CLOCK));
 
       set_data(1);
 
       /* Wait for incoming command, ie. CLOCK goes inactive ($31d .. $322) */
-      while (!(iec_bus_read() & IEC_BIT_CLOCK)) ;
+      while (!(iec_bus_read() & IEC_BIT_CLOCK)) {
+        /* ATN pulled down = reset, exit the loader */
+        if (!(iec_bus_read() & IEC_BIT_ATN)) {
+          goto done;
+        }
+      }
 
       /* Read incoming command */
       set_busy_led(1);
 
-      a = aw_get_byte();
-      b = aw_get_byte();
-      c = aw_get_byte();
+      a = get_byte();
+      b = get_byte();
+      c = get_byte();
 
-  #if 0 // Don't mess with timing for now, and I can't access the uart anyway
+  #if 0 
       /* Output command for debugging purposes */
       uart_puthex(a);
       uart_putc(' ');
@@ -262,20 +251,20 @@ void load_anotherworld(UNUSED_PARAMETER) {
 
       switch(c / 2) {
         case 0: // $366 read sector chain (~ file) starting at track/sector A/B
-          aw_read_sector_chain(buf, a, b);
+          read_sector_chain(buf, a, b);
           break;
 
         case 1: // $38f read track/sector A/B into $700
-          aw_read_sector(buf, a, b);
+          read_sector(buf[3], current_part, a, b);
           break;
 
         case 2: // $3a6 copy $700 page to $BBAA
-          aw_copy_page(buf, a, b);
+          copy_page(buf, a, b);
           break;
 
         case 3: // $3bb write track/sector A/B from $700
           set_dirty_led(1);
-          aw_write_sector(buf, a, b);
+          write_sector(buf[3], current_part, a, b);
           set_dirty_led(0);
           break;
 
@@ -284,19 +273,19 @@ void load_anotherworld(UNUSED_PARAMETER) {
           break;
 
         case 5: // $38b read BAM
-          aw_read_bam();
+          read_bam();
           break;
 
         case 6: // $3d2 download page from host into $700
-          aw_download_page(buf, a, b);
+          download_page(buf, a, b);
           break;
 
         case 7: // $11c upload page at $BBAA to host
-          aw_upload_page(buf, a, b);
+          upload_page(buf, a, b);
           break;
 
         case 8: // $128 read $1c00 (VIA 2 drive control) and send to host
-          aw_send_drive_control_reg();
+          send_drive_control_reg();
           break;
 
         case 9: // $119 reset 1541, unload code

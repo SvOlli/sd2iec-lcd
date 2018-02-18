@@ -102,16 +102,16 @@ inversions here and there. This cheat sheet was helpful:
 
  * C64 -> 1541/SD2IEC:
 
-        $DD00     |        |    |     $1800     |
-   CLOCK/DATA OUT | line   | v  | CLOCK/DATA IN | iec_read_bus()
+   $DD00 CLK/DATA |        |    |     $1800     |
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | iec_read_bus()
    ---------------+--------+----+---------------+---------------
-         0        | ACTIVE | 0v |       1       |       0
-         1        | INACTV | 5v |       0       |       1
+     0   |    1   | INACTV | 5v |       0       |       1
+     1   |    0   |  ACTV  | 0v |       1       |       0
 
  * 1541/SD2IEC -> C64:
 
-        $1800     |        |    |     $DD00     | set_data() /
-   CLOCK/DATA OUT | line   | v  | CLOCK/DATA IN | set_clock()
+   $1800 CLK/DATA |        |    |     $DD00     | set_data() /
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | set_clock()
    ---------------+--------+----+---------------+---------------
-          0       | INACTV | 5v |       1       |       1
-          1       | ACTIVE | 0v |       0       |       0
+     0   |    0   | INACTV | 5v |       1       |       1
+     1   |    1   |  ACTV  | 0v |       0       |       0
