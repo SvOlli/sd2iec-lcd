@@ -697,6 +697,15 @@ Note: Using sd2iec without an external crystal or similiar precise
   See docs/anotherworld.txt for deailed information about this loader
   and its protocol.
 
+  Wings of Fury (PAL import)
+  --------------------------
+  This loader requires a 1541.bin file present in the same directory
+  as the game's d64 file and the following commands issued once from
+  BASIC:
+
+    OPEN 1,8,15:PRINT#1,"XR:1541.BIN":CLOSE 1
+    OPEN 1,8,15:PRINT#1,"XW":CLOSE 1
+
 JiffyDOS:
 =========
 The JiffyDOS protocol has very relaxed timing constraints compared to
