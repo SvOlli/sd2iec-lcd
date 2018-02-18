@@ -115,13 +115,17 @@ static void read_and_tx_sector_chain(buffer_t *buf, uint8_t t, uint8_t s) {
   * @s  : sector
   */
 static void rx_and_write_sector(buffer_t *buf, uint8_t t, uint8_t s) {
-  uint8_t i = 0, chk = 0, b;
+  uint8_t i = 0, chk, b;
+  uint8_t *ptr;
   do {
+    chk = 0;
+    ptr = buf->data;
     wof_sync();
     do {
       b = wof_get_byte();
       chk ^= b;
-      buf->data[i] = b;
+      *ptr = b;
+      ptr++;
       i++;
     } while (i);
     sync_and_put_byte(chk);

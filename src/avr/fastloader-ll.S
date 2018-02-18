@@ -1843,9 +1843,6 @@ wof_sync:
         cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
         cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
 
-        ;; flush pending reads by the C64
-        delay_cycles 8 * 10
-
         ;; wait for DATA to become INACTIVE or ATN ACTIVE (C64 reset)
 0:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA  ; skip if active
         rjmp    1f
@@ -1895,7 +1892,7 @@ wof_get_byte:
         bld     r24, 1                                    ; 1
 
         ;; bits 2, 3
-        delay_cycles 11 * 8 - 5                           ; 11 cycles between LDAs on the C64 side
+        delay_cycles 11 * 8 - 5                           ; 11 cycles between STAs on the C64 side
         in      r19, _SFR_IO_ADDR(IEC_INPUT)
         bst     r19, IEC_PIN_CLOCK
         bld     r24, 2
@@ -1919,12 +1916,22 @@ wof_get_byte:
         bld     r24, 7
 
         ;; set CLOCK ACTIVE
-        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK  ; 2
 
         ;; high=0, so one-complement result
-        com     r24
+        com     r24                                       ; 1
 
-        pop     r19
+        pop     r19                                       ; 2
+
+        ;; C64 will pull DATA ACTIVE 11 cycles after the last two
+        ;; bits are sent. Wait so that the handshake for the next 
+        ;; byte starts with DATA ACTIVE. Otherwise the last two
+        ;; bits of the current byte might be mistaken as the first
+        ;; two bits of the next byte.
+        ;; 
+1:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    1b
+        
         ret
 
         ;; void wof_put_byte(uint8_t byte)
