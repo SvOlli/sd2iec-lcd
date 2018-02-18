@@ -1834,7 +1834,8 @@ n0sdos_send_byte:
         ;; On the drive side this is done after underlying I/O has finished and
         ;; we are ready for the next command. On the C64 the handshake
         ;; counterpart happens when the game wants to talk to the drive but
-        ;; before raster is checked for VIC DMA activity.
+        ;; before raster is checked for VIC DMA activity. ATN low (C64 reset)
+        ;; exits 
         ;;
         .global wof_sync
 wof_sync:
@@ -1845,18 +1846,22 @@ wof_sync:
         ;; flush pending reads by the C64
         delay_cycles 8 * 10
 
-        ;; while DATA ACTIVE
-0:      sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        ;; wait for DATA to become INACTIVE or ATN ACTIVE (C64 reset)
+0:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA  ; skip if active
+        rjmp    1f
+        sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_ATN   ; skip if inactive
+        ret
         rjmp    0b
 
         ;; set CLOCK ACTIVE
-        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+1:      sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
         
-        ;; while DATA INACTIVE
-1:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
-        rjmp    1b
-
+        ;; wait for DATA to become ACTIVE or ATN ACTIVE (C64 reset)
+3:      sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
         ret
+        sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_ATN   ; skip if inactive
+        ret
+        jmp     3b
 
 
         ;; uint8_t wof_get_byte(void)

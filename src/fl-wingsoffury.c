@@ -39,8 +39,8 @@
 #include "doscmd.h"
 #include "errormsg.h"
 #include "fastloader-ll.h"
-//#include "iec-bus.h"
-//#include "iec.h"
+#include "iec-bus.h"
+#include "iec.h"
 #include "led.h"
 #include "parser.h"
 #include "timer.h"
@@ -202,8 +202,14 @@ void load_wingsoffury(UNUSED_PARAMETER) {
 
       set_busy_led(0);
 
-      /* Read incoming command */
-      c = sync_and_get_byte();
+      /* Read incoming command or exit loader if C64 reset (ATN ACTIVE) */
+      wof_sync();
+      if (!(iec_bus_read() & IEC_BIT_ATN)) {
+        goto done;
+      }
+      c = wof_get_byte();
+
+      /* Read the remaining command bytes t, s and checksum */
       t = sync_and_get_byte();
       s = sync_and_get_byte();
       chk = sync_and_get_byte();
@@ -244,4 +250,11 @@ done:
   set_data(1);
   set_clock(1);
   free_buffer(buf);
+
+  /* Visual cue that the loader is gone */
+  set_dirty_led(1);
+  set_busy_led(1);
+  delay_ms(200);
+  set_dirty_led(0);
+  set_busy_led(0);
 }
