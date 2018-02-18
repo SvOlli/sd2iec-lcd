@@ -27,6 +27,9 @@
 
 */
 
+#ifdef __AVR__
+# include <avr/boot.h>
+#endif
 #include <stdbool.h>
 #include <string.h>
 #include "config.h"
@@ -35,8 +38,9 @@
 #include "diskchange.h"
 #include "doscmd.h"
 #include "errormsg.h"
-#include "iec-bus.h"
-#include "iec.h"
+#include "fastloader-ll.h"
+//#include "iec-bus.h"
+//#include "iec.h"
 #include "led.h"
 #include "parser.h"
 #include "timer.h"
@@ -50,16 +54,95 @@
 #define WHILE_CLOCK_INACTIVE while (iec_bus_read() & IEC_BIT_CLOCK)
 
 
-/** Display error using the busy/dirty leds.
-  * 8 blinks = 8 bits MSb first, green = 1, red = 0.
-  * Really crappy debugging aid for sd2iecs that don't have their
-  * UART pins accessible because they are glued shut like mine.
-  *
-  * @buf: array of page buffers (mapping $0400.. $07ff)
-  * @a  : lo byte of page addr
-  * @b  : hi byte of page addr
+/** Sync, then get one byte from host ($472)
+  * @return: the byte
   */
-static void aw_debug(uint8_t c) {
+static uint8_t sync_and_get_byte(void) {
+  wof_sync();
+  return wof_get_byte();
+}
+
+
+/** Sync, then get one byte to host ($4c8)
+  * @b: the byte
+  */
+static void sync_and_put_byte(uint8_t b) {
+  wof_sync();
+  wof_put_byte(b);
+}
+
+
+/** Read sector and send to host
+  * @buf: page buffer
+  * @t  : track
+  * @s  : sector
+  */
+static void read_and_tx_sector(buffer_t *buf, uint8_t t, uint8_t s) {
+  uint8_t i = 0;
+  read_sector(buf, current_part, t, s);
+  sync_and_put_byte(0x01); // read status 1=ok, 4/5=err
+  wof_sync();
+  do {
+    wof_put_byte(buf->data[i]);
+    i++;
+  } while (i);
+}
+
+
+/** Read sector chain and send to host
+  * @buf: page buffer
+  * @a  : track
+  * @b  : sector
+  */
+static void read_and_tx_sector_chain(buffer_t *buf, uint8_t t, uint8_t s) {
+  uint8_t i = 0;
+  while (t) {
+    read_sector(buf, current_part, t, s);
+    wof_sync();
+    do {
+      wof_put_byte(buf->data[i]);
+      i++;
+    } while (i);
+    t = buf->data[0];
+    s = buf->data[1];
+  } 
+}
+
+
+/** Receive and write sector
+  * @buf: page buffers
+  * @t  : track
+  * @s  : sector
+  */
+static void rx_and_write_sector(buffer_t *buf, uint8_t t, uint8_t s) {
+  uint8_t i = 0, chk = 0, b;
+  do {
+    wof_sync();
+    do {
+      b = wof_get_byte();
+      chk ^= b;
+      buf->data[i] = b;
+      i++;
+    } while (i);
+    sync_and_put_byte(chk);
+    b = sync_and_get_byte(); // get ack from c64
+  } while (b != 0x89);
+
+  write_sector(buf, current_part, t, s);
+  sync_and_put_byte(1); // write okay
+}
+
+
+#if 0
+/** Display error by blinking the busy/dirty leds 8 times
+  * (green = 1, red = 0), MSb first.
+  *
+  * Really crappy debugging aid for sd2iecs that don't have their
+  * UART pins accessible because they are glued shut.
+  *
+  * @c: whatever value you want to display
+  */
+static void debug_blink(uint8_t c) {
   set_busy_led(1);
   set_dirty_led(1);
   delay_ms(500);
@@ -75,145 +158,43 @@ static void aw_debug(uint8_t c) {
     delay_ms(250);
   }
 }
+#endif
 
-/** Sync with the C64 ($44c)
-  * TODO: check ATN/keys and get out of the loader if so
+
+/**
+  * Wings of Fury loader
+  * This is for the PAL import version. The loader is credited to
+  * "Andrew Software".
   */
-static void sync(void) {
-  set_clock(1); // release CLOCK
-  set_data(1); // release DATA
-  delay_us(10);
-  WHILE_DATA_ACTIVE;
-  set_clock(0); // CLOCK ACTIVE
-  WHILE_DATA_INACTIVE;
-}
-
-
-/** Get byte from host ($472)
-  * @return the byte
-  */
-static uint8_t get_byte(void) {
-  uint8_t b = 0;
-  sync();
-  WHILE_DATA_ACTIVE;
-  set_data(1); // release DATA
-  set_clock(1); // release CLOCK
-  delay_us(18); // 18 cycles
-  b |= (iec_bus_read() & IEC_BIT_CLOCK) ? 0 : 1;
-  b |= (iec_bus_read() & IEC_BIT_DATA) ? 0 : 2;
-  delay_us(11);
-  b |= (iec_bus_read() & IEC_BIT_CLOCK) ? 0 : 4;
-  b |= (iec_bus_read() & IEC_BIT_DATA) ? 0 : 8;
-  delay_us(11);
-  b |= (iec_bus_read() & IEC_BIT_CLOCK) ? 0 : 16;
-  b |= (iec_bus_read() & IEC_BIT_DATA) ? 0 : 32;
-  delay_us(11);
-  b |= (iec_bus_read() & IEC_BIT_CLOCK) ? 0 : 64;
-  b |= (iec_bus_read() & IEC_BIT_DATA) ? 0 : 128;
-  set_clock(0); // keep CLOCK active (= busy)
-  return b;
-}
-
-
-static void put_single_byte(uint8_t b) {
-  set_data(1);
-  set_clock(1); // release both
-  WHILE_DATA_ACTIVE;
-
-  set_clock(!(b & 1));
-  set_data( !(b & 2));
-  delay_us(19); // 19
-  set_clock(!(b & 4));
-  set_data( !(b & 8));
-  delay_us(10); // 12
-  set_clock(!(b & 16));
-  set_data( !(b & 32));
-  delay_us(11); // 13
-  set_clock(!(b & 64));
-  set_data( !(b & 128));
-
-  delay_us(10); // make sure the last two bits are latched
-}
-
-
-/** Send byte to host ($4c8)
-  * @b: the byte
-  */
-static void sync_and_put_byte(uint8_t b) {
-  sync();
-  put_single_byte(b);
-}
-
-
-/** Read sector and send to host
-  * @buf: page buffer
-  * @a  : track
-  * @b  : sector
-  */
-static void read_and_tx_sector(buffer_t *buf, uint8_t a, uint8_t b) {
-  uint8_t i = 0;
-  read_sector(buf, current_part, a, b);
-  sync_and_put_byte(0x01); // read status 1=ok, 4/5=err
-  sync();
-  do {
-    put_single_byte(buf->data[i]);
-    i++;
-  } while (i);
-}
-
-
-/** Read sector chain and send to host
-  * @buf: page buffer
-  * @a  : track
-  * @b  : sector
-  */
-static void read_and_tx_sector_chain(buffer_t *buf, uint8_t a, uint8_t b) {
-  uint8_t i = 0;
-  while (a) {
-    read_sector(buf, current_part, a, b);
-    sync();
-    do {
-      put_single_byte(buf->data[i]);
-      i++;
-    } while (i);
-    a = buf->data[0];
-    b = buf->data[1];
-  } 
-}
-
-
-/** Receive and write sector
-  * @buf: page buffers
-  * @a  : track
-  * @b  : sector
-  */
-static void rx_and_write_sector(buffer_t *buf, uint8_t a, uint8_t b) {
-  uint8_t i = 0;
-  do {
-    buf->data[i] = get_byte();
-    i++;
-  } while (i);
-  write_sector(buf, current_part, a, b);
-}
-
-
 void load_wingsoffury(UNUSED_PARAMETER) {
   buffer_t *buf;
-  uint8_t a, b, c;  // C = command, A/B = parameters (track/sector or hi/lo pointer)
-  uint8_t x; // A^B^C checksum
+  uint8_t t, s, c;  // c = command, t/s = track/sector
+  uint8_t chk; // A^B^C checksum
 
-  /* WoF uses only one page */
+#if defined __AVR_ATmega644__   || \
+    defined __AVR_ATmega644P__  || \
+    defined __AVR_ATmega1284P__ || \
+    defined __AVR_ATmega1281__
+  /* Lock out clock sources that aren't stable enough for this protocol */
+  uint8_t tmp = boot_lock_fuse_bits_get(GET_LOW_FUSE_BITS) & 0x0f;
+  if (tmp == 2) {
+    set_error(ERROR_CLOCK_UNSTABLE);
+    return;
+  }
+#endif
+
+  /* WoF uses only one buffer on the 1541 side */
   buf = alloc_system_buffer();
 
   set_data(1);
   set_clock(1);
 
-  // VISUAL SIGNAL TO START SAMPLING DATA ON THE SCOPE
-  //set_dirty_led(1); set_busy_led(1);
-  //delay_ms(1000);
-  //set_dirty_led(0); set_busy_led(0);
-
-  //set_dirty_led(1);
+#if 0
+  // Visual cue to start scope/logic analyzer capture
+  set_dirty_led(1); set_busy_led(1);
+  delay_ms(1000);
+  set_dirty_led(0); set_busy_led(0);
+#endif
 
   /* Main loop ($300) */
   ATOMIC_BLOCK(ATOMIC_FORCEON) {
@@ -222,54 +203,34 @@ void load_wingsoffury(UNUSED_PARAMETER) {
       set_busy_led(0);
 
       /* Read incoming command */
-      c = get_byte();
-
-      //aw_debug(a);
-
-      a = get_byte();
-
-      //aw_debug(b);
-
-      b = get_byte();
-
-      //aw_debug(c);
-
-      x = get_byte();
-
-      //aw_debug(x);
+      c = sync_and_get_byte();
+      t = sync_and_get_byte();
+      s = sync_and_get_byte();
+      chk = sync_and_get_byte();
 
       set_busy_led(1);
 
-      delay_ms(1);
-
-      if (x == (a ^ b ^ c)) {
-        sync_and_put_byte(0x89);
-        //aw_debug(0x80);
+      if (chk == (t ^ s ^ c)) {
+        sync_and_put_byte(0x89); // ACK
       } else {
-        sync_and_put_byte(0xa1);
-        //aw_debug(0x40);
+        sync_and_put_byte(0xa1); // NAK, expect retry
         continue;
       }
 
       switch (c) {
         case 0:
-          //aw_debug(0x20);
-          read_and_tx_sector(buf, a, b);
+          read_and_tx_sector(buf, t, s);
           break;
         case 1:
-          //aw_debug(0x10);
           set_dirty_led(1);
-          rx_and_write_sector(buf, a, b);
+          rx_and_write_sector(buf, t, s);
           set_dirty_led(0);
           break;
         case 2:
-          //aw_debug(0x08);
-          read_and_tx_sector_chain(buf, a, b);
+          read_and_tx_sector_chain(buf, t, s);
           break;
         default:
-          //aw_debug(0x04);
           if (c & 0x80) {
-            //aw_debug(0x02);
             goto done;
           }
           goto error;
@@ -278,7 +239,6 @@ void load_wingsoffury(UNUSED_PARAMETER) {
   }
 
 error:
-  aw_debug(c);
   set_error(ERROR_UNKNOWN_DRIVECODE);
 done:
   set_data(1);
