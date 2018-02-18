@@ -305,4 +305,11 @@ done:
   for (i = 0; i < 4; i++) {
     free_buffer(buf[i]);
   }
+
+  /* Visual cue that the loader is gone */
+  set_dirty_led(1);
+  set_busy_led(1);
+  delay_ms(200);
+  set_dirty_led(0);
+  set_busy_led(0);
 }
