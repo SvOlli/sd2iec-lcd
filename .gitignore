@@ -5,6 +5,7 @@
 *.lst
 *~
 *.bin
+!doc/wingsoffury/1541.bin
 *.hex
 *.map
 *.elf
