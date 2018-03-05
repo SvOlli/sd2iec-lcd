@@ -69,6 +69,8 @@ void wof_sync(void);
 uint8_t wof_get_byte(void);
 void wof_put_byte(uint8_t byte);
 
+void n0s_iffl_put_byte(uint8_t byte);
+
 typedef enum { PARALLEL_DIR_IN = 0,
                PARALLEL_DIR_OUT } parallel_dir_t;
 

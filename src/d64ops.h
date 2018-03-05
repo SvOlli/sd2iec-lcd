@@ -52,6 +52,14 @@
 
 extern const fileops_t d64ops;
 
+/* Last read track/sector, required by N0S loaders */
+typedef struct d64_lastread_s {
+  uint8_t track;  // $18
+  uint8_t sector; // $19
+} d64_lastread_t;
+
+extern d64_lastread_t d64_lastread;
+
 uint8_t d64_mount(path_t *path, uint8_t *name);
 void    d64_unmount(uint8_t part);
 

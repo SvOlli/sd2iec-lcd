@@ -1972,4 +1972,46 @@ wof_put_byte:
         ret
 #endif
 
+#if defined(CONFIG_LOADER_N0S_IFFL)
+        ;; ====================================================================
+        ;;  N0SDOS IFFL loaders
+        ;; ====================================================================
+
+        .global n0s_iffl_put_byte
+n0s_iffl_put_byte:
+        ;; clock and data high
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ;; use r0 as temp register to shift bits out CLOCK/DATA lines
+        mov     r0, r24
+        com     r0                                        ; negate all bits (a 0 in r24 pulls the line) 
+
+        ;; wait until DATA ACTIVE
+0:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    0b
+
+        ;; bits 0, 1
+        rcall   send_bits_to_clk_data                     ; 10 -> data on bus -> 6
+        delay_cycles 18 * 8 - 10                          ; that is why the first delay is 10 not 16
+
+        ;; bits 2, 3
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; bits 4, 5
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; bits 6, 7
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; pull clock
+        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ret
+
+#endif
+
         .end
