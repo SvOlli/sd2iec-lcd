@@ -1,0 +1,186 @@
+
+Some project history
+====================
+
+This software is based on the sd2iec-0.10.3 software by Ingo Korb. 
+First the LCD functionality made by Draco for an older version was added by Seanser.
+Then andi6510 added support for DOGM LCD modules based on a ST7036 controller
+and did some tidy up work by removing all remaining non-LCD related differences 
+between Seansers version and the official sd2iec-0.10.3.
+
+This software was tested on an ATMEGA1284p microcontroller with a ST7036 based 
+DOGM162 module and another HD44780 based module (exact type unkonwn).
+
+
+New files added on top of sd2iec 0.10.3
+=======================================
+
+lcd.c - low level LCD driver - initial version from draco, andi6510 added lcd auto detection and st7036 support
+lcd.h - low level LCD driver interface
+display_lcd.c - high level LCD functions - initial version from draco, andi6510 added contrast setting for st7036
+display_lcd.h - high level LCD functions interface
+config-larspLCD - configuration for LarsP hardware with LCD attached
+README_LCD - this file
+
+
+
+Modified files of sd2iec 0.10.3
+===============================
+
+buffer.c - display "READY" when the last buffer has been closed - seems more a hack and should be replaced with a proper solution
+d64ops.c - display "LOAD" and "SAVE" when files are accessed in a D64 image
+doscmd.c - display various messages on each command - add LCD specific X-commands: XT XA XG XX XC
+eeprom.c - add LCD-contrast setting to eeprom storage
+errormsg.c - display current error message
+fatops.c - display current directory
+fileops.c - display "LOAD" and "SAVE" files (CapFuture)
+main.c - initialise LCD functions, display welcome screen, debug output of detected LCD type
+Makefile - added files display_lcd.c and lcd.c to build process, added prerelease tag LCD
+
+
+
+Additional Commands available via IEC
+=====================================
+
+XT* Text Commands
+-----------------
+
+The display can be accessed from the c64!
+Use commands "XT1" and "XT2" to send text to display line 1 or 2.
+The addressed line will be cleared before text is printed.
+
+Example 1 - send "Lightyears ahead!" to line1:
+
+OPEN15,8,15,"XT1Lightyears ahead!"
+
+The "XTC" command allows to send a control code followed by data, which makes it possible
+to program the display from the C64 side, e.g. define own characters.
+
+Example2 - clear the screen:
+
+OPEN15,8,15,"XTC"+CHR$(1) will clear the screen.
+
+Example 3 - define a special character with a "heart" (line 2) and print it 3 times (line 3):
+1 OPEN15,8,15
+2 PRINT#15,"XTC"+CHR$(64)+CHR$(27)+CHR$(31)+CHR$(31)+CHR$(14)+CHR$(4)+CHR$(0)+CHR $(0)
+3 print#15,"XT1"+CHR$(8)+CHR$(8)+CHR$(8)
+4 CLOSE15
+
+
+Display About Message
+----------------------
+
+The XA command shows a small about message:
+
+Example:
+
+OPEN15,8,15,"XA"
+
+Display Greetings & Credits
+---------------------------
+
+The XG command shows the greetings and credits:
+
+Example:
+
+OPEN15,8,15,"XG"
+
+
+Undocumented experimental feature
+----------------------------------
+
+The XX command is not documented. It might cause skynet to
+link all computers together to play a game of global
+thermonuclear war.
+
+Maybe your C64 is not connected to skynet, so you'll give it a try.
+Good luck!
+
+Example:
+
+OPEN15,8,15,"XX"
+
+
+Setup LCD contrast (only for ST7036 based displays)
+---------------------------------------------------
+
+The XC command changes the display contrast on a ST7036 based display
+Valid contrast values  go from 0 to 63. 
+
+Example:
+
+OPEN15,8,15,"XC 40"
+
+Note:
+Once contrast is adjusted properly the setting can be saved with the XW command!
+
+
+
+LCD Hardware
+============
+
+Every HD 44780 or ST7036 compatible displays (2x16 or 2x20 chars) should work
+The display is accessed in 4-bit mode.
+
+Different pinouts have to be used depending on the hardware variant
+of the SD2IEC / MMC2IEC device:
+
+sd2iec V1.4 by Shadowolf (sw1 variant)
+MMC2IEC by Lars Pontoppidan (larsp variant)
+-------------------------------------------
+(original design, also used by PCBs from Peter Sieg)
+
+Display Atmega
+RS PB0
+RW PB1
+E PB2
+DB4 PC4
+DB5 PC5
+DB6 PC6
+DB7 PC7
+
+
+sd2iec V1.6 by Shadowolf (sw2 variant)
+--------------------------------------
+ATTENTION: I have not yet tested this pinout so it might be possible that it is not working.
+At least it will be hard to solder the display to PB0,PB1 and PB3 if using a TQFP44 mcu.
+
+Display Atmega
+RS PB0
+RW PB1
+E PB3
+
+DB4 PC4
+DB5 PC5
+DB6 PC6
+DB7 PC7
+
+For other variants please feel encouraged to change the lcd.h to suit your needs.
+
+
+Credits
+=======
+
+Draco who did most of the LCD functionality
+Seanser who started the initial porting from version 0.8 to 0.10.3
+Ingo Korb alias for his great SD2IEC firmware.
+Shadowolf for his outstanding hardware designs running the SD2IEC firmware.
+Lars Pontoppidan for creating the MMC2IEC in the first place.
+Jim Brain & ChaN for basic code like IEC routines and FAT driver.
+Commodore for the good times.
+
+Licence
+=======
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; version 2 of the License only.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA 
