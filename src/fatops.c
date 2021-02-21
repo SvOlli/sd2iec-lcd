@@ -50,6 +50,10 @@
 #include "wrapops.h"
 #include "fatops.h"
 
+#ifdef CONFIG_LCD_DISPLAY
+#include "display_lcd.h"
+#endif
+
 #define P00_HEADER_SIZE       26
 #define P00_CBMNAME_OFFSET    8
 #define P00_RECORDLEN_OFFSET  25
@@ -1106,6 +1110,10 @@ uint8_t fat_chdir(path_t *path, cbmdirent_t *dent) {
           partition[path->part].fop = &d64ops;
         }
 
+#ifdef CONFIG_LCD_DISPLAY
+      DS_CD((char *)dent->pvt.fat.realname);
+#endif
+
       return 0;
     }
   }
@@ -1500,6 +1508,16 @@ uint8_t image_unmount(uint8_t part) {
   // FIXME: ops entry?
   if (partition[part].fop == &d64ops)
     d64_unmount(part);
+
+#ifdef CONFIG_LCD_DISPLAY
+  path_t path;
+  path.part    = part;
+  path.dir.fat = partition[part].current_dir.fat;
+  fat_getdirlabel(&path, ops_scratch);
+  fs_mode = 0;
+  DS_CD((char*)ops_scratch);
+  ///DS_TITLE;
+#endif
 
   if (display_found) {
     /* Send current path to display */

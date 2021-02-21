@@ -1124,6 +1124,98 @@ static inline void buttons_init(void) {
   PORTB |= BUTTON_NEXT | BUTTON_PREV;
 }
 
+#elif CONFIG_HARDWARE_VARIANT == 10
+/* ---------- Hardware configuration: evo2 ---------- */
+#  define HAVE_SD
+#  define SD_CHANGE_HANDLER     ISR(INT0_vect)
+#  define SD_SUPPLY_VOLTAGE     (1L<<21)
+
+#  define SPI_DIVISOR_SLOW 32
+#  define SPI_DIVISOR_FAST 4
+
+static inline void sdcard_interface_init(void) {
+  DDRD  &= ~_BV(PD2);
+  PORTD |=  _BV(PD2);
+  DDRD  &= ~_BV(PD6);
+  PORTD |=  _BV(PD6);
+  EICRA |=  _BV(ISC00);
+  EIMSK |=  _BV(INT0);
+}
+
+static inline uint8_t sdcard_detect(void) {
+  return !(PIND & _BV(PD2));
+}
+
+static inline uint8_t sdcard_wp(void) {
+  return PIND & _BV(PD6);
+}
+
+static inline uint8_t device_hw_address(void) {
+  return 8 + !(PINA & _BV(PA2)) + 2*!(PINA & _BV(PA3));
+}
+
+static inline void device_hw_address_init(void) {
+  DDRA  &= ~(_BV(PA2)|_BV(PA3));
+  PORTA |=   _BV(PA2)|_BV(PA3);
+}
+
+static inline void leds_init(void) {
+  DDRA |= _BV(PA0);
+  DDRA |= _BV(PA1);
+}
+
+static inline __attribute__((always_inline)) void set_busy_led(uint8_t state) {
+  if (state)
+    PORTA &= ~_BV(PA0);
+  else
+    PORTA |= _BV(PA0);
+}
+
+static inline __attribute__((always_inline)) void set_dirty_led(uint8_t state) {
+  if (state)
+    PORTA &= ~_BV(PA1);
+  else
+    PORTA |= _BV(PA1);
+}
+
+static inline void toggle_dirty_led(void) {
+  PINA |= _BV(PA1);
+}
+
+#  define IEC_INPUT             PINC
+#  define IEC_DDR               DDRC
+#  define IEC_PORT              PORTC
+#  define IEC_PIN_ATN           PC0
+#  define IEC_PIN_DATA          PC1
+#  define IEC_PIN_CLOCK         PC2
+#  define IEC_PIN_SRQ           PC3
+#  define IEC_ATN_INT_VECT      PCINT2_vect
+#  define IEC_PCMSK             PCMSK2
+
+static inline void iec_interrupts_init(void) {
+  PCICR |= _BV(PCIE2);
+  PCIFR |= _BV(PCIF2);
+}
+
+#  define BUTTON_NEXT           _BV(PA4)
+#  define BUTTON_PREV           _BV(PA5)
+
+static inline rawbutton_t buttons_read(void) {
+  return PINA & (BUTTON_NEXT | BUTTON_PREV);
+}
+
+static inline void buttons_init(void) {
+  DDRA  &= (uint8_t)~(BUTTON_NEXT | BUTTON_PREV);
+  PORTA |= BUTTON_NEXT | BUTTON_PREV;
+}
+
+#  define SOFTI2C_PORT          PORTA
+#  define SOFTI2C_PIN           PINA
+#  define SOFTI2C_DDR           DDRA
+#  define SOFTI2C_BIT_SCL       PA6
+#  define SOFTI2C_BIT_SDA       PA7
+#  define SOFTI2C_BIT_INTRQ     PA5
+#  define SOFTI2C_DELAY         6
 
 #else
 #  error "CONFIG_HARDWARE_VARIANT is unset or set to an unknown value."

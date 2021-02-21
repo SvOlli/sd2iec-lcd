@@ -7,7 +7,7 @@ PATCHLEVEL = 0
 FIX =
 
 # Forces bootloader version to 0, comment out or leave empty for release
-PRERELEASE = atentdead0
+PRERELEASE = -SVOLLI0
 
 #----------------------------------------------------------------------------
 # WinAVR Makefile Template written by Eric B. Weddington, Joerg Wunsch, et al.
@@ -90,6 +90,11 @@ ifeq ($(CONFIG_UART_DEBUG),y)
   SRC += $(CONFIG_ARCH)/uart.c
 endif
 
+ifeq ($(CONFIG_LCD_DISPLAY),y)
+  SRC += display_lcd.c lcd.c
+#  NEED_I2C := y
+endif
+
 ifeq ($(CONFIG_REMOTE_DISPLAY),y)
   SRC += display.c
   NEED_I2C := y
@@ -113,7 +118,12 @@ ifdef CONFIG_ADD_ATA
 endif
 
 # Various RTC implementations
-ifeq ($(CONFIG_RTC_DSRTC),y)
+ifeq ($(CONFIG_RTC_DS1307),y)
+  SRC += rtc.c ds1307-3231.c
+  NEED_I2C := y
+endif
+
+ifeq ($(CONFIG_RTC_DS3231),y)
   SRC += rtc.c ds1307-3231.c
   NEED_I2C := y
 endif
@@ -181,12 +191,14 @@ PROGRAMVERSION := $(MAJOR).$(MINOR)
 BOOT_VERSION := $(BOOT_VERSION)00
 endif
 
+LCDVERSION := $(PROGRAMVERSION)
 ifdef PRERELEASE
 PROGRAMVERSION := $(PROGRAMVERSION)$(PRERELEASE)
+LCDVERSION := $(LCDVERSION)+
 endif
 
 LONGVERSION := -$(CONFIGSUFFIX)
-CDEFS += -DVERSION=\"$(PROGRAMVERSION)\" -DLONGVERSION=\"$(LONGVERSION)\"
+CDEFS += -DVERSION=\"$(PROGRAMVERSION)\" -DLONGVERSION=\"$(LONGVERSION)\" -DLCDVERSION=\"$(LCDVERSION)\"
 
 
 # Define programs and commands.
