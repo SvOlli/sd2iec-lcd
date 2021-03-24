@@ -52,6 +52,7 @@
 #include "timer.h"
 #include "uart.h"
 #include "iec.h"
+#include "eeprom-conf.h"
 
 /* ------------------------------------------------------------------------- */
 /*  Global variables                                                         */
@@ -101,6 +102,12 @@ IEC_ATN_HANDLER {
   }
 }
 #endif
+
+static uint8_t _iec_sleep = 0;
+void iec_sleep()
+{
+  _iec_sleep = 1;
+}
 
 /* ------------------------------------------------------------------------- */
 /*  Byte transfer routines                                                   */
@@ -558,10 +565,18 @@ void iec_mainloop(void) {
       set_busy_led(0);
       set_dirty_led(1);
 
-      /* Wait until the sleep key is used again */
+#ifdef CONFIG_USE_PREV_FOR_RESET
+      /* Wait until the reset is used to unsleep */
+      while (!key_pressed(KEY_PREV))
+        system_sleep();
+      read_configuration();
+      reset_key(KEY_PREV);
+#else
+      /* Wait until the sleep key is used to unsleep */
       while (!key_pressed(KEY_SLEEP))
         system_sleep();
       reset_key(KEY_SLEEP);
+#endif
 
       update_leds();
 
@@ -575,8 +590,9 @@ void iec_mainloop(void) {
       while (IEC_ATN) {
         if (key_pressed(KEY_NEXT | KEY_PREV | KEY_HOME)) {
           change_disk();
-        } else if (key_pressed(KEY_SLEEP)) {
+        } else if (key_pressed(KEY_SLEEP) || (_iec_sleep == 1)) {
           reset_key(KEY_SLEEP);
+          _iec_sleep = 0;
           iec_data.bus_state = BUS_SLEEP;
           break;
         } else if (display_found && key_pressed(KEY_DISPLAY)) {

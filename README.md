@@ -11,7 +11,21 @@ Branches
 These branches are available in this repository:
 
 - master: contains the original code from sd2iec.de
-- LCD: (this branch) contains the merged code for LCD versions
+- LCD: contains the merged code for LCD versions
+- c128d-internal: (this branch) contains additional code for a custom C128D
+  internal mounted version
+
+C128D Interal Version Additions
+-------------------------------
+A new command is implemented. "H" (hide): the the SD2IEC off the IEC bus,
+like long pressing the next button.
+
+A new compile option `CONFIG_USE_PREV_FOR_RESET` turns on following feature:
+detecting IEC reset does the "unhide" from long pressing next button or the
+"H"-command above, and also re-reads the config mainly to reset the drive id,
+so a reset works similar to the reset of the internal 1571 drive. For this
+to work, the IEC reset needs to be wired to the "PREV" button, which then
+does no longer serve the original functionality.
 
 See Also
 --------

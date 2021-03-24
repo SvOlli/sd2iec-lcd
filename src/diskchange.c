@@ -40,6 +40,7 @@
 #include "utils.h"
 #include "ustring.h"
 #include "diskchange.h"
+#include "eeprom-conf.h"
 
 static const char PROGMEM autoswap_lst_name[] = "AUTOSWAP.LST";
 static const char PROGMEM autoswap_gen_name[] = "AUTOSWAP.GEN"; // FIXME: must be 15 chars or less
@@ -296,6 +297,15 @@ void set_changelist(path_t *path, uint8_t *filename) {
 
 void change_disk(void) {
   path_t path;
+
+#ifdef CONFIG_USE_PREV_FOR_RESET
+  /* when prev is used for reset then skip disk change */
+  if (key_pressed(KEY_PREV)) {
+    read_configuration();
+    reset_key(KEY_PREV);
+    return;
+  }
+#endif
 
   if (swaplist.fs == NULL) {
     /* No swaplist active, try using AUTOSWAP.LST */
