@@ -53,6 +53,7 @@
 #include "utils.h"
 #include "wrapops.h"
 #include "doscmd.h"
+#include "timer.h"
 
 #ifdef CONFIG_LCD_DISPLAY
 #include "display_lcd.h"
@@ -2202,6 +2203,11 @@ void parse_doscommand(void) {
   case 'G':
     /* Get-Partition */
     parse_getpartition();
+    break;
+
+  case 'H':
+    /* Hide */
+    iec_sleep();
     break;
 
   case 'I':

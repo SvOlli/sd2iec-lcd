@@ -64,6 +64,7 @@ typedef struct {
 
 extern iec_data_t iec_data;
 
+void iec_sleep(void);
 uint8_t iec_check_atn(void);
 void iec_init(void);
 
