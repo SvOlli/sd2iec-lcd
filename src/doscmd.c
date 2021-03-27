@@ -1158,6 +1158,26 @@ static void handle_memexec(void) {
     return;
 
   address = command_buffer[3] + (command_buffer[4]<<8);
+
+  if ((command_length > 5) && (address >= 0x0200) && (address <= 0x0229)) {
+    /* we are running M-E that executes code send via command buffer */
+    uint8_t i;
+    for (i = 3; i < command_length; ++i)
+      datacrc = crc16_update(datacrc, command_buffer[i]);
+
+    switch (datacrc) {
+    case 0x597c: /* C128 DevMan 1581 mute code */
+      iec_sleep();
+      break;
+    default:
+      /* unknown M-E call */
+      set_error_ts(ERROR_UNKNOWN_DRIVEEXEC, datacrc >> 8, datacrc & 0xff);
+      break;
+    }
+    datacrc = 0xffff;
+    return;
+  }
+
   run_loader(address);
 }
 
