@@ -20,6 +20,7 @@ lcd.h - low level LCD driver interface
 display_lcd.c - high level LCD functions - initial version from draco, andi6510 added contrast setting for st7036
 display_lcd.h - high level LCD functions interface
 config-larspLCD - configuration for LarsP hardware with LCD attached
+config-evo2 - configuration for hardware sold as "evo2", a slightly modified sw2
 README_LCD - this file
 
 
