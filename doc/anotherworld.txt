@@ -1,0 +1,117 @@
+Another World (C64) loader
+==========================
+
+Notes on IEC protocol reversal of: ANOTHER WORLD (Commodore 64), "+4 TRIAD"
+version.
+
+Loader initialization
+=====================
+
+The program begins by installing a 32 bytes bootstrap routine on the 1541's
+RAM ($500) via the "M-W" DOS command, then makes the 1541 jump to the entry
+point at $500 with "M-E". The bootstrap routine reads the rest of the loader's
+code from track $11, sectors $13 and $14 into buffers #0 and #1 respectively
+($300 .. $4ff), then jumps to $400. Code at $400 relocates a portion of itself
+into the $100 area and then jumps to $300 where the main loader's loop begins.
+After code in $400 is relocated to the $100 area, buffer #1 ($400 .. $4FF) can
+be discarded and reused by the loader.
+
+The loop at $300 takes commands and dispatches them via a jump table that
+spans from $352 through $365 so there are 10 commands total.
+
+Loader commands
+===============
+
+All comands are 3 bytes long: A, B, C. The meaning of A and B depend on the
+actual command code, C. The 10 possible values for C are:
+
+* $00 ($366): read file starting at track A, sector B, upload to the C64
+* $02 ($38f): read track A, sector B into $700
+* $04 ($3a6): copy page from $700 to $BBAA
+* $06 ($3bb): write page $700 into track A, sector B
+* $08 ($3b1): bump head
+* $0a ($38b): read BAM
+* $0c ($3d2): download page from C64 into buffer at $700
+* $0e ($11c): upload page $BBAA to the C64
+* $10 ($128): send drive control register ($1c00) to C64
+* $12 ($119): reset the disk drive (exits the loader)
+
+Some commands require a response back from the 1541 (ie. commands $00, $0e,
+$10). Other commands such as reading or writing sectors don't send any
+response back to the C64. Thus, in order to read a sector, the game first
+issues command $02 to get a sector from the physical media, then command $0e
+to download it over the IEC bus.
+
+All operations are low (ie. track/sector) level. There is no support for
+accessing files by name. 
+
+The higher level command $00 reads an entire file given its first
+track/sector. The format of a file is the same as in a regular DOS file where
+every sector has a 254 byte payload (a "block") and the first two bytes at the
+beginning of the sector (offsets $00 and $01) are the track and sector of the
+next block respectively. The last sector has track number 0 and is transferred
+completely regardless of the actual payload size.
+
+Protocol
+========
+
+The loader uses the CLOCK and DATA IEC lines with CLOCK being generally
+governed by the C64 and the loader acting as a slave with exceptions
+explained below.
+
+First some IEC nomenclature: CLOCK/DATA lines are ACTIVE when some device is
+driving them and INACTIVE when no device drives the line. Device drivers are
+open collectors with pull-up resistors, so the normal status of the line is
+HIGH (5 volts) when no one is driving it and LOW (0 volts) when it's being
+driven by some device on the bus.
+
+The idle status of this protocol is CLOCK = ACTIVE.
+
+Commands are always initiated by the C64 by putting each bit on the DATA line,
+MSb first, starting with the A byte. The last bit is thus the LSb of the C
+byte. Each bit is "latched" by the other device on both edges of the CLOCK
+line starting with the ACTIVE -> INACTIVE edge.
+
+The protocol is symmetrical, so when a command requires a response from the
+loader ($0e, $10), the loader follows exactly the same protocol, but this time
+around the 1541 drives the DATA line. The CLOCK line is still driven by the
+C64, though.
+
+Commands that involve reading from the physical media may take some time and
+the C64 can also be doing some other game related jobs, so they must
+synchronize with one another before another command can be issued. The way
+this is done is:
+
+ * C64 sets CLOCK INACTIVE after sending the command while it's busy.
+ * The loader processes the command and then "wiggles" the DATA line when it's
+   done to signal it's ready and keeps doing so while CLOCK remains INACTIVE.
+ * When the C64 is ready it turns CLOCK ACTIVE. 
+ * At this point both devices are ready to process new commands.
+
+The $00 command (send entire file) is special in that the loader can drive the
+CLOCK line ACTIVE while it's reading a sector from the physical media, then
+release the line when it's ready to begin sending the 254-byte block. The
+loader doesn't pipeline reads and uploads, so reading and uploading occur in
+strict sequence.
+
+Appendix - IEC bus / SD2IEC cheat sheet
+=======================================
+
+Tracking down IEC bus data can be painful due to the many logic level
+inversions here and there. This cheat sheet was helpful:
+
+ * C64 -> 1541/SD2IEC:
+
+   $DD00 CLK/DATA |        |    |     $1800     |
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | iec_read_bus()
+   ---------------+--------+----+---------------+---------------
+     0   |    1   | INACTV | 5v |       0       |       1
+     1   |    0   |  ACTV  | 0v |       1       |       0
+
+ * 1541/SD2IEC -> C64:
+
+   $1800 CLK/DATA |        |    |     $DD00     | set_data() /
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | set_clock()
+   ---------------+--------+----+---------------+---------------
+     0   |    0   | INACTV | 5v |       1       |       1
+     1   |    1   |  ACTV  | 0v |       0       |       0

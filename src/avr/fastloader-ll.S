@@ -566,7 +566,12 @@ tdbitloop2:
         ret
 #endif
 
-#if defined(CONFIG_LOADER_DREAMLOAD) || defined(CONFIG_LOADER_FC3) || defined(CONFIG_LOADER_ULOAD3) || defined(CONFIG_LOADER_ELOAD1) || defined(CONFIG_LOADER_GEOS)
+#if defined(CONFIG_LOADER_DREAMLOAD) \
+    || defined(CONFIG_LOADER_FC3) \
+    || defined(CONFIG_LOADER_ULOAD3) \
+    || defined(CONFIG_LOADER_ELOAD1) \
+    || defined(CONFIG_LOADER_GEOS) \
+    || defined(CONFIG_LOADER_WINGSOFFURY)
         ;;
         ;; Set bit 0 of r0 on CLOCK and bit 1 on DATA
         ;; A bit value of one means pull down
@@ -1813,6 +1818,198 @@ n0sdos_send_byte:
         delay_cycles 6*8
 
         sei
+        ret
+
+#endif
+
+#ifdef CONFIG_LOADER_WINGSOFFURY
+        ;; ====================================================================
+        ;;  Wings of Fury (PAL import) loader
+        ;; ====================================================================
+
+
+        ;; void wof_sync(uint8_t byte)
+        ;;
+        ;; Sync with the c64 in preparation for both tx/rxing one or more bytes.
+        ;; On the drive side this is done after underlying I/O has finished and
+        ;; we are ready for the next command. On the C64 the handshake
+        ;; counterpart happens when the game wants to talk to the drive but
+        ;; before raster is checked for VIC DMA activity. ATN low (C64 reset)
+        ;; exits 
+        ;;
+        .global wof_sync
+wof_sync:
+        ;; clock and data high
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ;; wait for DATA to become INACTIVE or ATN ACTIVE (C64 reset)
+0:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA  ; skip if active
+        rjmp    1f
+        sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_ATN   ; skip if inactive
+        ret
+        rjmp    0b
+
+        ;; set CLOCK ACTIVE
+1:      sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+        
+        ;; wait for DATA to become ACTIVE or ATN ACTIVE (C64 reset)
+3:      sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        ret
+        sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_ATN   ; skip if inactive
+        ret
+        jmp     3b
+
+
+        ;; uint8_t wof_get_byte(void)
+        ;;
+        ;; Receive byte from host
+        ;;
+        .global wof_get_byte
+wof_get_byte:
+        
+        ;; clock and data high
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ;; the game will keep DATA pulled during VIC DMA activity
+        ;; and release when it's safe to transfer, so wait while
+        ;; DATA ACTIVE
+0:      sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    0b
+        
+        ;; receive bits on CLOCK + DATA, LSb first, high=0
+        clr     r24                                       ; 1
+        push    r19                                       ; 2
+
+        ;; bits 0, 1
+        ;; sample at the center of working range [16, 24] us (determined empirically)
+        delay_cycles 20 * 8 - 3
+        in      r19, _SFR_IO_ADDR(IEC_INPUT)              ; 1
+        bst     r19, IEC_PIN_CLOCK                        ; 1
+        bld     r24, 0                                    ; 1
+        bst     r19, IEC_PIN_DATA                         ; 1
+        bld     r24, 1                                    ; 1
+
+        ;; bits 2, 3
+        delay_cycles 11 * 8 - 5                           ; 11 cycles between STAs on the C64 side
+        in      r19, _SFR_IO_ADDR(IEC_INPUT)
+        bst     r19, IEC_PIN_CLOCK
+        bld     r24, 2
+        bst     r19, IEC_PIN_DATA
+        bld     r24, 3
+
+        ;; bits 4, 5
+        delay_cycles 11 * 8 - 5
+        in      r19, _SFR_IO_ADDR(IEC_INPUT)
+        bst     r19, IEC_PIN_CLOCK
+        bld     r24, 4
+        bst     r19, IEC_PIN_DATA
+        bld     r24, 5
+
+        ;; bits 6, 7
+        delay_cycles 11 * 8 - 5
+        in      r19, _SFR_IO_ADDR(IEC_INPUT)
+        bst     r19, IEC_PIN_CLOCK
+        bld     r24, 6
+        bst     r19, IEC_PIN_DATA
+        bld     r24, 7
+
+        ;; set CLOCK ACTIVE
+        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK  ; 2
+
+        ;; high=0, so one-complement result
+        com     r24                                       ; 1
+
+        pop     r19                                       ; 2
+
+        ;; C64 will pull DATA ACTIVE 11 cycles after the last two
+        ;; bits are sent. Wait so that the handshake for the next 
+        ;; byte starts with DATA ACTIVE. Otherwise the last two
+        ;; bits of the current byte might be mistaken as the first
+        ;; two bits of the next byte.
+        ;; 
+1:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    1b
+        
+        ret
+
+        ;; void wof_put_byte(uint8_t byte)
+        ;;
+        ;; Send byte to host.
+        ;;
+        .global wof_put_byte
+wof_put_byte:
+        ;; clock and data high
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ;; use r0 as temp register to shift bits out CLOCK/DATA lines
+        mov     r0, r24
+
+        ;; the game will keep DATA pulled during VIC DMA activity
+        ;; and release when it's safe to transfer, so wait while
+        ;; DATA ACTIVE
+0:      sbis    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    0b
+
+        ;; bits 0, 1
+        rcall   send_bits_to_clk_data                     ; 10 + 6
+        delay_cycles 20 * 8 - 10
+
+        ;; bits 2, 3
+        rcall   send_bits_to_clk_data
+        delay_cycles 12 * 8 - 16
+
+        ;; bits 4, 5
+        rcall   send_bits_to_clk_data
+        delay_cycles 13 * 8 - 16
+
+        ;; bits 6, 7
+        rcall   send_bits_to_clk_data
+        delay_cycles 10 * 8 - 16
+
+        ret
+#endif
+
+#if defined(CONFIG_LOADER_N0S_IFFL)
+        ;; ====================================================================
+        ;;  N0SDOS IFFL loaders
+        ;; ====================================================================
+
+        .global n0s_iffl_put_byte
+n0s_iffl_put_byte:
+        ;; clock and data high
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_DATA
+        cbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
+        ;; use r0 as temp register to shift bits out CLOCK/DATA lines
+        mov     r0, r24
+        com     r0                                        ; negate all bits (a 0 in r24 pulls the line) 
+
+        ;; wait until DATA ACTIVE
+0:      sbic    _SFR_IO_ADDR(IEC_INPUT), IEC_PIN_DATA
+        rjmp    0b
+
+        ;; bits 0, 1
+        rcall   send_bits_to_clk_data                     ; 10 -> data on bus -> 6
+        delay_cycles 18 * 8 - 10                          ; that is why the first delay is 10 not 16
+
+        ;; bits 2, 3
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; bits 4, 5
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; bits 6, 7
+        rcall   send_bits_to_clk_data
+        delay_cycles 8 * 8 - 16
+
+        ;; pull clock
+        sbi     _SFR_IO_ADDR(IEC_OUTPUT), IEC_OPIN_CLOCK
+
         ret
 
 #endif

@@ -118,6 +118,12 @@ CONFIG_LOADER_SAMSJOURNEY=y
 # Enable DolphinDOS parallel speeder
 CONFIG_PARALLEL_DOLPHIN=y
 
+# Enable Another World's loader
+CONFIG_LOADER_ANOTHERWORLD=y
+
+# Enable Wings of Fury's loader
+CONFIG_LOADER_WINGSOFFURY=y
+
 # Select which hardware to compile for
 # Valid values:
 #   1 - example configuration in config.h (won't compile!)

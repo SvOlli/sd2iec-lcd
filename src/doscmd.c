@@ -193,7 +193,16 @@ static const PROGMEM struct fastloader_crc_s fl_crc_table[] = {
 #ifdef CONFIG_LOADER_SAMSJOURNEY
   { 0x6af4, FL_SAMSJOURNEY,      RXTX_NONE          }, // CRC of penultimate M-W
 #endif
-
+#ifdef CONFIG_LOADER_ANOTHERWORLD
+  { 0xa018, FL_ANOTHERWORLD,     RXTX_NONE          }, // CRC of Another World M-W ($0500..$053f)
+#endif
+#ifdef CONFIG_LOADER_WINGSOFFURY
+  { 0xc536, FL_WINGSOFFURY,      RXTX_NONE          }, // CRC of WoF M-W ($0300..$69f)
+#endif
+#ifdef CONFIG_LOADER_N0S_IFFL
+  { 0xed6c, FL_N0S_IFFL_SCAN,    RXTX_NONE          }, // CRC of N0S scanner ($0400..$04D9)
+  { 0xfbb9, FL_N0S_IFFL_LOAD,    RXTX_NONE          }, // CRC of N0S loader ($03b5..$056c)
+#endif
   { 0, FL_NONE, 0 }, // end marker
 };
 
@@ -264,6 +273,16 @@ static const PROGMEM struct fastloader_handler_s fl_handler_table[] = {
 #ifdef CONFIG_LOADER_SAMSJOURNEY
   { 0x0400, FL_SAMSJOURNEY,      load_samsjourney, 0 },
 #endif
+#ifdef CONFIG_LOADER_ANOTHERWORLD
+  { 0x0500, FL_ANOTHERWORLD,     load_anotherworld, 0 },
+#endif
+#ifdef CONFIG_LOADER_WINGSOFFURY
+  { 0x0300, FL_WINGSOFFURY,      load_wingsoffury, 0 },
+#endif
+#ifdef CONFIG_LOADER_N0S_IFFL
+  { 0x0483, FL_N0S_IFFL_SCAN,    scan_n0s_iffl, 0 },
+  { 0x03b5, FL_N0S_IFFL_LOAD,    load_n0s_iffl, 0 },
+#endif
 
   { 0, FL_NONE, NULL, 0 }, // end marker
 };
@@ -279,6 +298,11 @@ static const PROGMEM struct fastloader_capture_s fl_capture_table[] = {
 #ifdef CONFIG_LOADER_GEOS
   { FL_GEOS_S1_64,  0x42a, 255, BUFFER_SYS_CAPTURE1 },
   { FL_GEOS_S1_128, 0x44f, 255, BUFFER_SYS_CAPTURE1 },
+#endif
+#ifdef CONFIG_LOADER_N0S_IFFL
+  { FL_N0S_IFFL_SCAN, 0x590, 207, BUFFER_SYS_CAPTURE1 },
+  { FL_N0S_IFFL_SCAN, 0x660, 207, BUFFER_SYS_CAPTURE2 },
+  { FL_N0S_IFFL_SCAN, 0x730, 207, BUFFER_SYS_CAPTURE3 },
 #endif
 
   { FL_NONE, 0, 0, 0 }  // end marker
