@@ -5,6 +5,9 @@ This is a fork of the official [SD2IEC](https://sd2iec.de/) firmware, with
 an additional branch for support of LCDs based upon the version introduced
 in the
 [Forum64](https://www.forum64.de/index.php?thread/74116-lcd-sd2iec-firmware-1-0-0-f%C3%BCr-larsp-layout/).
+It also includes changes done by Javi M to support the C64 Version of
+"Another World" and "Wings Of Fury". Original source of this is available
+at [github](https://github.com/jamarju/sd2iec-anotherworld/).
 
 Branches
 --------
@@ -12,6 +15,8 @@ These branches are available in this repository:
 
 - master: contains the original code from sd2iec.de
 - LCD: (this branch) contains the merged code for LCD versions
+- c128d-internal: contains additional code for a custom C128D
+  internal mounted version
 
 See Also
 --------
