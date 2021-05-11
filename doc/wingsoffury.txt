@@ -1,0 +1,156 @@
+Wings of Fury (PAL import)
+==========================
+
+Notes on IEC protocol reversal of: WINGS OF FURY (Commodore 64).
+
+This game was originally NTSC only and converted to PAL unofficially The
+original loader was replaced to work on PAL systems.
+
+This implementations is for the PAL loader. The NTSC version of the game won't
+work on a PAL C64 with either real or emulated drive.
+
+
+Requirements
+============
+
+This file requires wingsoffury/1541.bin to be dropped on the same directory as
+the game's D64 file and the following comands issued from BASIC once:
+
+  OPEN 1,8,15:PRINT#1,"XR:1541.BIN":CLOSE 1
+  OPEN 1,8,15:PRINT#1,"XW":CLOSE 1
+
+The 1541.bin file contains a single signature byte required by the game to
+validate the 1541.
+
+
+Loader initialization
+=====================
+
+The C64 side of the loader sends the following commands:
+
+1. "I0"              (initializes the drive)
+2. "M-R" $fe $ff $01 (looks for #$67 to validate the drive)
+3. "M-W" $00 $03 ... (sends the loader to $300)
+4. "M-E" $00 $03     (runs the loader @ entry point $300)
+
+After the "M-E" command, the uploaded code takes over the 1541 main loop and
+starts accepting commands.
+
+
+Loader commands
+===============
+
+All comands are 4 bytes long: C, T, S, CHK. T/S are the track/sector to
+operate on, and CHK is a xor of the other 3 values. There is a jump table at
+$366 with a pointer to 4 different commands depending on the value of C:
+
+* $00 ($392): read 1 sector and send to host
+* $01 ($3bb): receive 1 sector from host and write to disk
+* $02 ($36e): read sector chain and send to host
+* $03 ($eb22): transfers control back to the 1541
+
+A command code >= $80 resets the 1541.
+
+Commands must be ACKed with response byte #$89 if the checksum is correct or
+NAKed with #A1 otherwise, in which case the command is resent by the host.
+
+The format of a "sector chain" is the same as in a regular DOS file where
+every sector has a 254 byte payload (a "block") and the first two bytes at the
+beginning of the sector (offsets $00 and $01) are the track and sector of the
+next block respectively. The last sector has next track = 0 and is transferred
+completely regardless of the actual payload size.
+
+
+Protocol - physical layer
+=========================
+
+This is a 2-bit loader that sends bits LSb first over the CLOCK and DATA
+lines. Even bits go to CLOCK and odd bits go to DATA as pictured here with
+numbers 0..3 representing the order in which each bit is transferred:
+
+  +----+----+----+----+----+----+----+----+
+  | D3 | C3 | D2 | C2 | D1 | C1 | D0 | C0 |
+  +----+----+----+----+----+----+----+----+
+
+A logic 1 corresponds to an ACTIVE status or 0v on the line. The ATN line is
+not used. 
+
+The host's busy signal is DATA ACTIVE whereas the drive signals busy by
+pulling CLOCK ACTIVE. All transmissions start with the following sync
+sequence:
+
+        Host (C64)             |       Drive (1541)
+  -----------------------------+----------------------------
+  1. Release DATA              | 1. Release CLOCK
+  2. Wait until CLOCK released | 2. Wait until DATA released
+  3. Pull DATA                 | 3. Pull CLOCK
+  4. Wait until CLOCK active   | 4. Wait until DATA active
+
+After both devices are in sync, if the VIC is performing, DMA the data line is
+kept active until the raster enters a safe area, then the C64 releases DATA,
+the drive releases CLOCK and the sender can start driving both signals. If
+multiple bytes are to be transferred either way, the C64 will hold DATA active
+during bad lines so that the timing doesn't get disturbed by the VIC chip
+accessing memory.
+
+The exact timing of signals AFTER the raster check and DATA release measured
+in cycles of the SENDER routines is:
+
+           | C64 -> 1541  | 1541->C64
+           | 1 MHz cycles | PAL cycles (.985 MHz) 
+  ---------+--------------+-----------------------
+  1st pair |      20      |     16
+  2nd pair |      11      |     10
+  3rd pair |      11      |     14
+  4th pair |      11      |     12
+
+For centered sampling on the C64 side, data is put on the line at microseconds
+20, 12, 13 and 12.
+
+
+Protocol - link layer
+=====================
+
+To send commands:
+
+  C64->1541: SYNC, C, SYNC,  T, SYNC, S, SYNC, CHK
+  1541->C64: SYNC, ACK/NAK ($81/$A1)
+
+To send a sector (C=$00)
+
+  1541->C64: SYNC, $01 (read OK), SYNC, sector data (256 bytes)
+
+To receive a sector (C=$01)
+
+  C64->1541: SYNC, sector data (256 bytes)
+  1541->C64: checksum (XOR of all 256 bytes)
+  C64->1541: ACK/NAK ($81/$A1)
+
+To send a sector chain (C=$02)
+
+  1541->C64: SYNC, $01 (read OK), SYNC, sector data (256 bytes)
+  1541->C64: SYNC, $01 (read OK), SYNC, sector data (256 bytes)
+  1541->C64: ... (repeat until next track == 0)
+
+
+Appendix - IEC bus / SD2IEC cheat sheet
+=======================================
+
+Tracking down IEC bus data can be painful due to the many logic level
+inversions here and there. This cheat sheet was helpful:
+
+ * C64 -> 1541/SD2IEC:
+
+   $DD00 CLK/DATA |        |    |     $1800     |
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | iec_read_bus()
+   ---------------+--------+----+---------------+---------------
+     0   |    1   | INACTV | 5v |       0       |       1
+     1   |    0   |  ACTV  | 0v |       1       |       0
+
+ * 1541/SD2IEC -> C64:
+
+   $1800 CLK/DATA |        |    |     $DD00     | set_data() /
+    OUT  |   IN   | line   | v  | CLOCK/DATA IN | set_clock()
+   ---------------+--------+----+---------------+---------------
+     0   |    0   | INACTV | 5v |       1       |       1
+     1   |    1   |  ACTV  | 0v |       0       |       0

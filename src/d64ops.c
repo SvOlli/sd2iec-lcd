@@ -92,6 +92,8 @@ struct {
   uint8_t errors[MAX_SECTORS_PER_TRACK];
 } errorcache;
 
+d64_lastread_t d64_lastread;  // last read track/sector
+
 static buffer_t *bam_buffer;  // recently-used buffer
 static buffer_t *bam_buffer2; // secondary buffer
 static uint8_t   bam_refcount;
@@ -1574,6 +1576,8 @@ static uint8_t d64_delete(path_t *path, cbmdirent_t *dent) {
 }
 
 static void d64_read_sector(buffer_t *buf, uint8_t part, uint8_t track, uint8_t sector) {
+  d64_lastread.track = track;
+  d64_lastread.sector = sector;
   checked_read(part, track, sector, buf->data, 256, ERROR_ILLEGAL_TS_COMMAND);
 }
 
