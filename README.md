@@ -13,15 +13,18 @@ Branches
 --------
 These branches are available in this repository:
 
-- master: contains the original code from sd2iec.de
+- master: contains the original code from [sd2iec.de](https://sd2iec.de/)
 - LCD: contains the merged code for LCD versions
 - c128d-internal: (this branch) contains additional code for a custom C128D
   internal mounted version
 
 C128D Interal Version Additions
 -------------------------------
-A new command is implemented. "H" (hide): the the SD2IEC off the IEC bus,
-like long pressing the next button.
+A new command is implemented. "H" (hide): take the SD2IEC off the IEC bus,
+like long pressing the next button. This is aliased to an "M-E"-command
+executed by the
+[C128 Device Manager](https://www.bartsplace.net/content/publications/devicemanager128.shtml)
+, when it detects an SD2IEC using the ROM of the 1581.
 
 A new compile option `CONFIG_USE_PREV_FOR_RESET` turns on following feature:
 detecting IEC reset does the "unhide" from long pressing next button or the
