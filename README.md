@@ -13,7 +13,7 @@ Branches
 --------
 These branches are available in this repository:
 
-- master: contains the original code from sd2iec.de
+- master: contains the original code from [sd2iec.de](https://sd2iec.de/)
 - LCD: (this branch) contains the merged code for LCD versions
 - c128d-internal: contains additional code for a custom C128D
   internal mounted version
