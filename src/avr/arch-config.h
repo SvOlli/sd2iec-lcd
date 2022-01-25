@@ -1209,12 +1209,12 @@ static inline void buttons_init(void) {
   PORTA |= BUTTON_NEXT | BUTTON_PREV;
 }
 
-#  define SOFTI2C_PORT          PORTA
-#  define SOFTI2C_PIN           PINA
-#  define SOFTI2C_DDR           DDRA
-#  define SOFTI2C_BIT_SCL       PA6
-#  define SOFTI2C_BIT_SDA       PA7
-#  define SOFTI2C_BIT_INTRQ     PA5
+#  define SOFTI2C_PORT          PORTC
+#  define SOFTI2C_PIN           PINC
+#  define SOFTI2C_DDR           DDRC
+#  define SOFTI2C_BIT_SCL       PC6
+#  define SOFTI2C_BIT_SDA       PC5
+#  define SOFTI2C_BIT_INTRQ     PC7
 #  define SOFTI2C_DELAY         6
 
 #else
