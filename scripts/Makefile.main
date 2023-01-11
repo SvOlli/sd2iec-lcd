@@ -119,12 +119,7 @@ ifdef CONFIG_ADD_ATA
 endif
 
 # Various RTC implementations
-ifeq ($(CONFIG_RTC_DS1307),y)
-  SRC += rtc.c ds1307-3231.c
-  NEED_I2C := y
-endif
-
-ifeq ($(CONFIG_RTC_DS3231),y)
+ifeq ($(CONFIG_RTC_DSRTC),y)
   SRC += rtc.c ds1307-3231.c
   NEED_I2C := y
 endif
@@ -192,14 +187,12 @@ PROGRAMVERSION := $(MAJOR).$(MINOR)
 BOOT_VERSION := $(BOOT_VERSION)00
 endif
 
-LCDVERSION := $(PROGRAMVERSION)
 ifdef PRERELEASE
 PROGRAMVERSION := $(PROGRAMVERSION)$(PRERELEASE)
-LCDVERSION := $(LCDVERSION)+
 endif
 
 LONGVERSION := -$(CONFIGSUFFIX)
-CDEFS += -DVERSION=\"$(PROGRAMVERSION)\" -DLONGVERSION=\"$(LONGVERSION)\" -DLCDVERSION=\"$(LCDVERSION)\"
+CDEFS += -DVERSION=\"$(PROGRAMVERSION)\" -DLONGVERSION=\"$(LONGVERSION)\"
 
 
 # Define programs and commands.
@@ -328,8 +321,6 @@ $(OBJDIR)/%.bin: $(OBJDIR)/%.elf
 	$(Q)$(OBJCOPY) -O binary -R .eeprom $< $@
 	$(E) "  CRCGEN $@"
 	$(Q)$(CRCGEN) $@ $(BINARY_LENGTH) $(CONFIG_BOOT_DEVID) $(BOOT_VERSION)
-	$(E) "  COPY   sd2iec-$(CONFIGSUFFIX)-$(PROGRAMVERSION).bin"
-	$(Q)$(COPY) $@ $(OBJDIR)/sd2iec-$(CONFIGSUFFIX)-$(PROGRAMVERSION).bin
 else
 $(OBJDIR)/%.bin: $(OBJDIR)/%.elf
 	$(E) "  BIN    $@"
