@@ -1604,9 +1604,12 @@ uint8_t image_chdir(path_t *path, cbmdirent_t *dent) {
  * @path   : path of the directory
  * @dirname: name of the directory to be created
  *
- * This function does nothing.
+ * This function only sets an error message.
  */
 void image_mkdir(path_t *path, uint8_t *dirname) {
+  (void)path;
+  (void)dirname;
+
   set_error(ERROR_SYNTAX_UNABLE);
   return;
 }
@@ -1626,7 +1629,7 @@ uint8_t image_read(uint8_t part, DWORD offset, void *buffer, uint16_t bytes) {
   FRESULT res;
   UINT bytesread;
 
-  if (offset != -1) {
+  if (offset != (DWORD)-1) {
     res = f_lseek(&partition[part].imagehandle, offset);
     if (res != FR_OK) {
       parse_error(res,1);
@@ -1662,7 +1665,7 @@ uint8_t image_write(uint8_t part, DWORD offset, void *buffer, uint16_t bytes, ui
   FRESULT res;
   UINT byteswritten;
 
-  if (offset != -1) {
+  if (offset != (DWORD)-1) {
     res = f_lseek(&partition[part].imagehandle, offset);
     if (res != FR_OK) {
       parse_error(res,0);
@@ -1687,6 +1690,10 @@ uint8_t image_write(uint8_t part, DWORD offset, void *buffer, uint16_t bytes, ui
 
 /* Dummy function for format */
 void format_dummy(uint8_t drive, uint8_t *name, uint8_t *id) {
+  (void)drive;
+  (void)name;
+  (void)id;
+
   set_error(ERROR_SYNTAX_UNKNOWN);
 }
 
