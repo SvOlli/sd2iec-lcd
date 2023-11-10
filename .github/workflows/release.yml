@@ -19,7 +19,6 @@ jobs:
          VER=63
          PLUS=+
          echo "ver=1.0.0atentdead0-${VER}${PLUS}-$REV" >> $GITHUB_OUTPUT
-         make CONFIG=configs/config-mbed PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV
          make CONFIG=configs/config-uIEC PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
          make CONFIG=configs/config-uIEC3 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
          make CONFIG=configs/config-larsp PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
