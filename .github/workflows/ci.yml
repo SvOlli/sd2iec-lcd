@@ -34,6 +34,7 @@ jobs:
          cp obj-m1284p-sw1/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-sw1.bin
          cp obj-m1284p-sw2/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-sw2.bin
          cp obj-lpc1768-arm2iec1/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-lpc1768-arm2iec1.bin
+         cp obj-lpc1768-mbed/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-lpc1768-mbed.bin
          cp obj-m1284p-petSD/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-petSD.bin
          cp obj-m1284p-evo2/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-evo2.bin
          cp obj-m1284p-lcd/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-lcd.bin
