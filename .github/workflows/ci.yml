@@ -1,0 +1,46 @@
+name: CI
+on: 
+   push:
+      branches:
+         - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build dist
+      run: |
+         sudo apt-get update
+         sudo apt-get -y install avr-libc gcc-arm-none-eabi
+         REV=$(git rev-parse --short HEAD | tr a-z A-Z)
+         VER=63
+         PLUS=+
+         make CONFIG=configs/config-uIEC PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-uIEC3 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-larsp PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-sw1 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-sw2 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-arm2iec1 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-petSD PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-evo2 PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-lcd PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         make CONFIG=configs/config-lcdcf PRERELEASE=ATENTDEAD0-${VER}${PLUS}-$REV-LCD
+         mkdir bin
+         cp obj-m1281-uIEC/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1281-uIEC.bin
+         cp obj-m1281-uIEC3/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1281-uIEC3.bin
+         cp obj-m1284p-larsp/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-larsp.bin
+         cp obj-m1284p-sw1/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-sw1.bin
+         cp obj-m1284p-sw2/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-sw2.bin
+         cp obj-lpc1768-arm2iec1/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-lpc1768-arm2iec1.bin
+         cp obj-m1284p-petSD/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-petSD.bin
+         cp obj-m1284p-evo2/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-evo2.bin
+         cp obj-m1284p-lcd/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-lcd.bin
+         cp obj-m1284p-lcdcf/sd2iec.bin bin/sd2iec-1.0.0atentdead0-${VER}${PLUS}-$REV-m1284p-lcdcf.bin
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: sd2iec-firmware
+        path: bin/
