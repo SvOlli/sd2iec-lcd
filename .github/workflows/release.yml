@@ -14,7 +14,7 @@ jobs:
       id: build
       run: |
          sudo apt-get update
-         sudo apt-get -y install avr-libc
+         sudo apt-get -y install avr-libc gcc-arm-none-eabi
          REV=$(git rev-parse --short HEAD | tr a-z A-Z)
          VER=63
          PLUS=+
