@@ -1190,9 +1190,11 @@ static void handle_memexec(void) {
       datacrc = crc16_update(datacrc, command_buffer[i]);
 
     switch (datacrc) {
+#ifdef CONFIG_HAVE_IEC
     case 0x597c: /* C128 DevMan 1581 mute code */
       iec_sleep();
       break;
+#endif
     default:
       /* unknown M-E call */
       set_error_ts(ERROR_UNKNOWN_DRIVEEXEC, datacrc >> 8, datacrc & 0xff);
@@ -2249,10 +2251,12 @@ void parse_doscommand(void) {
     parse_getpartition();
     break;
 
+#ifdef CONFIG_HAVE_IEC
   case 'H':
     /* Hide */
     iec_sleep();
     break;
+#endif
 
   case 'I':
     /* Initialize */
